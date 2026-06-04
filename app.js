@@ -17,8 +17,12 @@ const CABLE_SECTIONS = [
   { section: 300, ampacity: 500 }
 ];
 
+const STORAGE_KEY = "laadkastCalculator.savedCalculations.v1";
+
 const inputIds = [
+  "customerName",
   "projectName",
+  "calculationVersion",
   "spots",
   "powerPerPoint",
   "phaseMode",
@@ -41,11 +45,15 @@ const inputIds = [
 ];
 
 const inputs = Object.fromEntries(inputIds.map((id) => [id, document.getElementById(id)]));
+const savedCalculationSelect = byId("savedCalculationSelect");
 const defaults = {};
 inputIds.forEach((id) => {
   const element = inputs[id];
   defaults[id] = element.type === "checkbox" ? element.checked : element.value;
 });
+let savedCalculations = loadSavedCalculations();
+let activeSavedId = null;
+let isApplyingSavedState = false;
 
 const out = {
   installedPower: byId("installedPower"),
@@ -76,12 +84,22 @@ const out = {
   costTotal: byId("costTotal"),
   budgetRows: byId("budgetRows"),
   singleLineDiagram: byId("singleLineDiagram"),
-  reportText: byId("reportText")
+  reportText: byId("reportText"),
+  saveStatus: byId("saveStatus")
 };
 
 document.querySelectorAll("input, select").forEach((element) => {
-  element.addEventListener("input", calculate);
-  element.addEventListener("change", calculate);
+  if (element.id === "savedCalculationSelect") {
+    return;
+  }
+  element.addEventListener("input", () => {
+    markDirty();
+    calculate();
+  });
+  element.addEventListener("change", () => {
+    markDirty();
+    calculate();
+  });
 });
 
 inputs.powerPerPoint.addEventListener("change", () => {
@@ -92,6 +110,7 @@ inputs.powerPerPoint.addEventListener("change", () => {
 document.querySelectorAll("[data-preset-spots]").forEach((button) => {
   button.addEventListener("click", () => {
     inputs.spots.value = button.dataset.presetSpots;
+    markDirty();
     calculate();
   });
 });
@@ -109,12 +128,24 @@ byId("resetButton").addEventListener("click", () => {
       element.value = defaults[id];
     }
   });
+  activeSavedId = null;
+  savedCalculationSelect.value = "";
+  setSaveStatus("Nieuwe calculatie, nog niet opgeslagen.");
   calculate();
 });
 
+byId("saveVersionButton").addEventListener("click", saveCurrentVersion);
+byId("loadVersionButton").addEventListener("click", loadSelectedVersion);
+byId("newVersionButton").addEventListener("click", prepareNewVersion);
+byId("deleteVersionButton").addEventListener("click", deleteSelectedVersion);
+savedCalculationSelect.addEventListener("change", () => {
+  const selected = findSavedCalculation(savedCalculationSelect.value);
+  setSaveStatus(selected ? savedSummary(selected) : "Selecteer een calculatie om te laden.");
+});
 byId("printButton").addEventListener("click", () => window.print());
 byId("copyButton").addEventListener("click", copyReport);
 
+renderSavedCalculationOptions();
 calculate();
 
 function byId(id) {
@@ -126,9 +157,203 @@ function numberValue(id) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function loadSavedCalculations() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => item && item.id && item.values) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedCalculations() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(savedCalculations));
+}
+
+function currentInputValues() {
+  return Object.fromEntries(inputIds.map((id) => {
+    const element = inputs[id];
+    return [id, element.type === "checkbox" ? element.checked : element.value];
+  }));
+}
+
+function applyInputValues(values) {
+  isApplyingSavedState = true;
+  inputIds.forEach((id) => {
+    const element = inputs[id];
+    const value = values[id] ?? defaults[id];
+    if (element.type === "checkbox") {
+      element.checked = Boolean(value);
+    } else {
+      element.value = value;
+    }
+  });
+  isApplyingSavedState = false;
+}
+
+function saveCurrentVersion() {
+  const s = settings();
+  inputs.customerName.value = s.customerName;
+  inputs.projectName.value = s.projectName;
+  inputs.calculationVersion.value = s.calculationVersion;
+
+  const values = currentInputValues();
+  const identity = savedIdentity(values);
+  const existingIndex = savedCalculations.findIndex((item) => savedIdentity(item.values) === identity);
+  const now = new Date().toISOString();
+  const existing = existingIndex >= 0 ? savedCalculations[existingIndex] : null;
+  const record = {
+    id: existing?.id || createId(),
+    createdAt: existing?.createdAt || now,
+    savedAt: now,
+    values
+  };
+
+  if (existingIndex >= 0) {
+    savedCalculations[existingIndex] = record;
+  } else {
+    savedCalculations.push(record);
+  }
+
+  activeSavedId = record.id;
+  persistSavedCalculations();
+  renderSavedCalculationOptions(record.id);
+  setSaveStatus(savedSummary(record));
+  showToast("Calculatie opgeslagen");
+}
+
+function loadSelectedVersion() {
+  const record = findSavedCalculation(savedCalculationSelect.value);
+  if (!record) {
+    setSaveStatus("Selecteer eerst een opgeslagen calculatie.");
+    return;
+  }
+
+  applyInputValues(record.values);
+  activeSavedId = record.id;
+  savedCalculationSelect.value = record.id;
+  calculate();
+  setSaveStatus(savedSummary(record));
+  showToast("Calculatie geladen");
+}
+
+function prepareNewVersion() {
+  const s = settings();
+  inputs.calculationVersion.value = nextVersionName(s.customerName, s.projectName);
+  activeSavedId = null;
+  savedCalculationSelect.value = "";
+  calculate();
+  setSaveStatus("Nieuwe versie klaar om te bewaren.");
+}
+
+function deleteSelectedVersion() {
+  const record = findSavedCalculation(savedCalculationSelect.value);
+  if (!record) {
+    setSaveStatus("Selecteer eerst een opgeslagen calculatie.");
+    return;
+  }
+
+  const label = savedLabel(record);
+  if (!window.confirm(`Verwijder ${label}?`)) {
+    return;
+  }
+
+  savedCalculations = savedCalculations.filter((item) => item.id !== record.id);
+  if (activeSavedId === record.id) {
+    activeSavedId = null;
+  }
+  persistSavedCalculations();
+  renderSavedCalculationOptions();
+  setSaveStatus("Calculatie verwijderd.");
+  showToast("Calculatie verwijderd");
+}
+
+function renderSavedCalculationOptions(selectedId = activeSavedId) {
+  savedCalculations.sort((a, b) => {
+    const aName = savedLabel(a).toLowerCase();
+    const bName = savedLabel(b).toLowerCase();
+    if (aName !== bName) {
+      return aName.localeCompare(bName, "nl-BE");
+    }
+    return new Date(b.savedAt) - new Date(a.savedAt);
+  });
+
+  savedCalculationSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = savedCalculations.length ? "Kies calculatie..." : "Geen opgeslagen calculaties";
+  savedCalculationSelect.appendChild(placeholder);
+
+  savedCalculations.forEach((record) => {
+    const option = document.createElement("option");
+    option.value = record.id;
+    option.textContent = savedLabel(record);
+    savedCalculationSelect.appendChild(option);
+  });
+
+  if (selectedId && findSavedCalculation(selectedId)) {
+    savedCalculationSelect.value = selectedId;
+  }
+}
+
+function findSavedCalculation(id) {
+  return savedCalculations.find((item) => item.id === id);
+}
+
+function savedIdentity(values) {
+  return [
+    normalizeKey(values.customerName || "Nieuwe klant"),
+    normalizeKey(values.projectName || "Parking laadpalen"),
+    normalizeKey(values.calculationVersion || "Versie 1")
+  ].join("::");
+}
+
+function savedLabel(record) {
+  const values = record.values;
+  return `${values.customerName || "Nieuwe klant"} / ${values.projectName || "Parking laadpalen"} / ${values.calculationVersion || "Versie 1"}`;
+}
+
+function savedSummary(record) {
+  const values = record.values;
+  return `${savedLabel(record)} - opgeslagen ${formatDateTime(record.savedAt)} - ${values.spots} plaatsen`;
+}
+
+function nextVersionName(customerName, projectName) {
+  const keyPrefix = `${normalizeKey(customerName)}::${normalizeKey(projectName)}::`;
+  const versionNumbers = savedCalculations
+    .filter((record) => savedIdentity(record.values).startsWith(keyPrefix))
+    .map((record) => {
+      const match = String(record.values.calculationVersion || "").match(/^versie\s+(\d+)$/i);
+      return match ? Number(match[1]) : 0;
+    });
+  const next = Math.max(0, ...versionNumbers) + 1;
+  return `Versie ${next}`;
+}
+
+function markDirty() {
+  if (isApplyingSavedState) {
+    return;
+  }
+  setSaveStatus(activeSavedId ? "Wijzigingen nog niet opgeslagen." : "Nieuwe calculatie, nog niet opgeslagen.");
+}
+
+function setSaveStatus(text) {
+  out.saveStatus.textContent = text;
+}
+
+function normalizeKey(value) {
+  return String(value).trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function createId() {
+  return `calc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 function settings() {
   return {
+    customerName: inputs.customerName.value.trim() || "Nieuwe klant",
     projectName: inputs.projectName.value.trim() || "Parking laadpalen",
+    calculationVersion: inputs.calculationVersion.value.trim() || "Versie 1",
     spots: clamp(Math.round(numberValue("spots")), 1, 96),
     powerPerPoint: clamp(numberValue("powerPerPoint"), 1, 100),
     phases: inputs.phaseMode.value === "1" ? 1 : 3,
@@ -519,7 +744,9 @@ function schemeNode(title, subtitle) {
 
 function renderReport(s, data) {
   const lines = [
+    `Klant: ${s.customerName}`,
     `Project: ${s.projectName}`,
+    `Versie: ${s.calculationVersion}`,
     `Datum: ${new Date().toLocaleDateString("nl-BE")}`,
     "",
     "Invoer",
@@ -620,6 +847,16 @@ function formatPercent(value) {
 
 function formatMoney(value) {
   return `EUR ${Math.round(value).toLocaleString("nl-BE")}`;
+}
+
+function formatDateTime(value) {
+  return new Date(value).toLocaleString("nl-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function formatNumber(value, digits = 0) {

@@ -30,9 +30,35 @@
             <button class="text-button" id="resetButton" type="button">Reset</button>
           </div>
 
+          <div class="project-tools">
+            <div class="field-group">
+              <label for="savedCalculationSelect">Opgeslagen calculaties</label>
+              <select id="savedCalculationSelect">
+                <option value="">Geen opgeslagen calculaties</option>
+              </select>
+            </div>
+            <div class="action-row">
+              <button class="text-button primary" id="saveVersionButton" type="button">Bewaar</button>
+              <button class="text-button" id="loadVersionButton" type="button">Laad</button>
+              <button class="text-button" id="newVersionButton" type="button">Nieuwe versie</button>
+              <button class="text-button danger" id="deleteVersionButton" type="button">Verwijder</button>
+            </div>
+            <p class="save-status" id="saveStatus">Nog niets opgeslagen.</p>
+          </div>
+
+          <div class="field-group">
+            <label for="customerName">Klant</label>
+            <input id="customerName" type="text" value="Nieuwe klant">
+          </div>
+
           <div class="field-group">
             <label for="projectName">Projectnaam</label>
             <input id="projectName" type="text" value="Parking laadpalen">
+          </div>
+
+          <div class="field-group">
+            <label for="calculationVersion">Calculatieversie</label>
+            <input id="calculationVersion" type="text" value="Versie 1">
           </div>
 
           <div class="field-group">
