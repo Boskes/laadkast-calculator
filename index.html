@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Laadkast Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">EV-verdeelkast</p>
+          <h1>Laadkast Calculator</h1>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="printButton" type="button" aria-label="Print rapport" title="Print rapport">
+            <span aria-hidden="true">PR</span>
+          </button>
+          <button class="icon-button" id="copyButton" type="button" aria-label="Kopieer rapport" title="Kopieer rapport">
+            <span aria-hidden="true">CP</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="inputs-panel" aria-label="Parameters">
+          <div class="panel-header">
+            <h2>Parameters</h2>
+            <button class="text-button" id="resetButton" type="button">Reset</button>
+          </div>
+
+          <div class="field-group">
+            <label for="projectName">Projectnaam</label>
+            <input id="projectName" type="text" value="Parking laadpalen">
+          </div>
+
+          <div class="field-group">
+            <label>Parkeerplaatsen</label>
+            <div class="segmented" role="group" aria-label="Aantal parkeerplaatsen">
+              <button type="button" data-preset-spots="4">4</button>
+              <button type="button" data-preset-spots="8">8</button>
+              <button type="button" data-preset-spots="12">12</button>
+              <button type="button" data-preset-spots="16">16</button>
+              <button type="button" data-preset-spots="20">20</button>
+              <button type="button" data-preset-spots="24">24</button>
+            </div>
+            <input id="spots" type="number" min="1" max="96" step="1" value="12">
+          </div>
+
+          <div class="field-grid">
+            <div class="field-group">
+              <label for="powerPerPoint">kW per laadpunt</label>
+              <select id="powerPerPoint">
+                <option value="7.4">7.4 kW 1F</option>
+                <option value="11" selected>11 kW 3F</option>
+                <option value="22">22 kW 3F</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="phaseMode">Fasen</label>
+              <select id="phaseMode">
+                <option value="3" selected>3x400V+N</option>
+                <option value="1">1x230V</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field-group">
+              <label for="simultaneity">Gelijktijdigheid</label>
+              <div class="input-with-unit">
+                <input id="simultaneity" type="number" min="5" max="100" step="5" value="100">
+                <span>%</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="availableCurrent">Beschikbaar</label>
+              <div class="input-with-unit">
+                <input id="availableCurrent" type="number" min="16" max="630" step="1" value="125">
+                <span>A</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field-group">
+              <label for="feederLength">Hoofdkabel</label>
+              <div class="input-with-unit">
+                <input id="feederLength" type="number" min="1" max="500" step="1" value="35">
+                <span>m</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="branchLength">Gem. laadkabel</label>
+              <div class="input-with-unit">
+                <input id="branchLength" type="number" min="1" max="250" step="1" value="20">
+                <span>m</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field-group">
+              <label for="voltageDrop">Max. spanningsval</label>
+              <div class="input-with-unit">
+                <input id="voltageDrop" type="number" min="1" max="8" step="0.5" value="3">
+                <span>%</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="reserve">Reserve</label>
+              <div class="input-with-unit">
+                <input id="reserve" type="number" min="0" max="50" step="5" value="20">
+                <span>%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field-group checkbox-row">
+              <input id="midMeters" type="checkbox" checked>
+              <label for="midMeters">MID meters</label>
+            </div>
+            <div class="field-group checkbox-row">
+              <input id="chargerDcProtection" type="checkbox" checked>
+              <label for="chargerDcProtection">6mA DC in laadpaal</label>
+            </div>
+          </div>
+
+          <details class="cost-details">
+            <summary>Budgetparameters</summary>
+            <div class="field-grid">
+              <div class="field-group">
+                <label for="chargerCost">Laadpaal stuk</label>
+                <div class="input-with-unit">
+                  <input id="chargerCost" type="number" min="0" step="50" value="950">
+                  <span>EUR</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="outgoingCost">Beveiliging/uitgang</label>
+                <div class="input-with-unit">
+                  <input id="outgoingCost" type="number" min="0" step="25" value="220">
+                  <span>EUR</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="midCost">MID meter stuk</label>
+                <div class="input-with-unit">
+                  <input id="midCost" type="number" min="0" step="25" value="140">
+                  <span>EUR</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="loadManagerCost">Load manager</label>
+                <div class="input-with-unit">
+                  <input id="loadManagerCost" type="number" min="0" step="50" value="1200">
+                  <span>EUR</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="cabinetBaseCost">Kast/rail basis</label>
+                <div class="input-with-unit">
+                  <input id="cabinetBaseCost" type="number" min="0" step="50" value="900">
+                  <span>EUR</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="cableCost">Kabel per meter</label>
+                <div class="input-with-unit">
+                  <input id="cableCost" type="number" min="0" step="1" value="9">
+                  <span>EUR</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="laborHours">Werkuren</label>
+                <div class="input-with-unit">
+                  <input id="laborHours" type="number" min="0" step="1" value="40">
+                  <span>u</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="laborRate">Uurtarief</label>
+                <div class="input-with-unit">
+                  <input id="laborRate" type="number" min="0" step="5" value="65">
+                  <span>EUR</span>
+                </div>
+              </div>
+            </div>
+          </details>
+        </aside>
+
+        <section class="results-area" aria-live="polite">
+          <nav class="tabs" aria-label="Resultaat tabs">
+            <button class="tab active" type="button" data-tab="overview">Overzicht</button>
+            <button class="tab" type="button" data-tab="cabinet">Kast</button>
+            <button class="tab" type="button" data-tab="cables">Kabels</button>
+            <button class="tab" type="button" data-tab="budget">Budget</button>
+            <button class="tab" type="button" data-tab="scheme">Schema</button>
+          </nav>
+
+          <section class="tab-panel active" id="overviewPanel" data-panel="overview">
+            <div class="metric-grid">
+              <article class="metric">
+                <span>Geinstalleerd vermogen</span>
+                <strong id="installedPower">-</strong>
+              </article>
+              <article class="metric">
+                <span>Ontwerpvermogen</span>
+                <strong id="designPower">-</strong>
+              </article>
+              <article class="metric">
+                <span>Ontwerpstroom</span>
+                <strong id="designCurrent">-</strong>
+              </article>
+              <article class="metric">
+                <span>Vol vermogen tegelijk</span>
+                <strong id="fullPowerCars">-</strong>
+              </article>
+            </div>
+
+            <div class="split-grid">
+              <article class="panel">
+                <h2>Capaciteit</h2>
+                <div class="capacity-bar" aria-hidden="true">
+                  <span id="capacityFill"></span>
+                </div>
+                <dl class="data-list">
+                  <div><dt>Laadpunten</dt><dd id="pointCount">-</dd></div>
+                  <div><dt>Beschikbare aansluiting</dt><dd id="availablePower">-</dd></div>
+                  <div><dt>Gem. vermogen bij alle plaatsen bezet</dt><dd id="averagePower">-</dd></div>
+                  <div><dt>Aanbevolen load balancing</dt><dd id="loadBalancingAdvice">-</dd></div>
+                </dl>
+              </article>
+
+              <article class="panel">
+                <h2>Waarschuwingen</h2>
+                <ul class="notice-list" id="warnings"></ul>
+              </article>
+            </div>
+          </section>
+
+          <section class="tab-panel" id="cabinetPanel" data-panel="cabinet">
+            <div class="split-grid">
+              <article class="panel">
+                <h2>Kastopbouw</h2>
+                <dl class="data-list">
+                  <div><dt>Hoofdschakelaar</dt><dd id="mainSwitch">-</dd></div>
+                  <div><dt>Railstel</dt><dd id="busbar">-</dd></div>
+                  <div><dt>Per laadpunt</dt><dd id="branchProtection">-</dd></div>
+                  <div><dt>Differentieel</dt><dd id="rcdAdvice">-</dd></div>
+                  <div><dt>DIN modules</dt><dd id="dinModules">-</dd></div>
+                  <div><dt>Kasttype</dt><dd id="cabinetType">-</dd></div>
+                </dl>
+              </article>
+
+              <article class="panel">
+                <h2>Materiaallijst</h2>
+                <ul class="parts-list" id="partsList"></ul>
+              </article>
+            </div>
+          </section>
+
+          <section class="tab-panel" id="cablesPanel" data-panel="cables">
+            <div class="split-grid">
+              <article class="panel">
+                <h2>Kabeladvies</h2>
+                <dl class="data-list">
+                  <div><dt>Voedingskabel</dt><dd id="feederCable">-</dd></div>
+                  <div><dt>Spanningsval voeding</dt><dd id="feederDrop">-</dd></div>
+                  <div><dt>Laadpuntkabel</dt><dd id="branchCable">-</dd></div>
+                  <div><dt>Spanningsval laadpunt</dt><dd id="branchDrop">-</dd></div>
+                  <div><dt>Totale laadpuntlengte</dt><dd id="totalBranchLength">-</dd></div>
+                </dl>
+              </article>
+
+              <article class="panel">
+                <h2>Controlepunten</h2>
+                <ul class="check-list">
+                  <li>Kortsluitstroom en afschakeltijd nameten.</li>
+                  <li>Selectiviteit tussen hoofdbeveiliging en afgaande kringen controleren.</li>
+                  <li>Plaatsingswijze, temperatuur en bundeling op kabelsectie toepassen.</li>
+                  <li>Aardingsstelsel en foutlusimpedantie verifieren.</li>
+                  <li>AREI schema, situatieplan, labels en keuringsdossier voorzien.</li>
+                </ul>
+              </article>
+            </div>
+          </section>
+
+          <section class="tab-panel" id="budgetPanel" data-panel="budget">
+            <div class="metric-grid budget-grid">
+              <article class="metric">
+                <span>Kastmateriaal</span>
+                <strong id="costCabinet">-</strong>
+              </article>
+              <article class="metric">
+                <span>Laadpalen</span>
+                <strong id="costChargers">-</strong>
+              </article>
+              <article class="metric">
+                <span>Kabels</span>
+                <strong id="costCables">-</strong>
+              </article>
+              <article class="metric">
+                <span>Totaal excl. btw</span>
+                <strong id="costTotal">-</strong>
+              </article>
+            </div>
+
+            <article class="panel">
+              <h2>Budgetdetail</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Post</th>
+                      <th>Aantal</th>
+                      <th>Eenheid</th>
+                      <th>Bedrag</th>
+                    </tr>
+                  </thead>
+                  <tbody id="budgetRows"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          <section class="tab-panel" id="schemePanel" data-panel="scheme">
+            <article class="panel scheme-panel">
+              <h2>Eendraadschema concept</h2>
+              <div class="single-line" id="singleLineDiagram"></div>
+            </article>
+            <article class="panel">
+              <h2>Rapport</h2>
+              <pre id="reportText"></pre>
+            </article>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
